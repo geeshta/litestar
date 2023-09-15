@@ -60,91 +60,22 @@ Finally, we need to pass our middleware to the Litestar constructor:
 That's it. The ``JWTAuthenticationMiddleware`` will now run for every request, and we would be able to access these in a
 http route handler in the following way:
 
-.. code-block:: python
+.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/routes/http_route.py
+    :language: python
 
-   from litestar import Request, get
-   from litestar.datastructures import State
-
-   from my_app.db.models import User
-   from my_app.security.jwt import Token
-
-
-   @get("/")
-   def my_route_handler(request: Request[User, Token, State]) -> None:
-       user = request.user  # correctly typed as User
-       auth = request.auth  # correctly typed as Token
-       assert isinstance(user, User)
-       assert isinstance(auth, Token)
 
 Or for a websocket route:
 
-.. code-block:: python
-
-   from litestar import WebSocket, websocket
-   from litestar.datastructures import State
-
-   from my_app.db.models import User
-   from my_app.security.jwt import Token
-
-
-   @websocket("/")
-   async def my_route_handler(socket: WebSocket[User, Token, State]) -> None:
-       user = socket.user  # correctly typed as User
-       auth = socket.auth  # correctly typed as Token
-       assert isinstance(user, User)
-       assert isinstance(auth, Token)
+.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/routes/websocket_route.py
+    :language: python
 
 And if you'd like to exclude individual routes outside those configured:
 
-.. code-block:: python
+.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/excluded_route.py
+    :language: python
 
-   import anyio
-   from litestar import Litestar, MediaType, Response, get
-   from litestar.exceptions import NotFoundException
-   from litestar.middleware.base import DefineMiddleware
-
-   from my_app.security.authentication_middleware import JWTAuthenticationMiddleware
-
-   # you can optionally exclude certain paths from authentication.
-   # the following excludes all routes mounted at or under `/schema*`
-   # additionally,
-   # you can modify the default exclude key of "exclude_from_auth", by overriding the `exclude_from_auth_key` parameter on the Authentication Middleware
-   auth_mw = DefineMiddleware(JWTAuthenticationMiddleware, exclude="schema")
-
-
-   @get(path="/", exclude_from_auth=True)
-   async def site_index() -> Response:
-       """Site index"""
-       exists = await anyio.Path("index.html").exists()
-       if exists:
-           async with await anyio.open_file(anyio.Path("index.html")) as file:
-               content = await file.read()
-               return Response(content=content, status_code=200, media_type=MediaType.HTML)
-       raise NotFoundException("Site index was not found")
-
-
-   app = Litestar(route_handlers=[site_index], middleware=[auth_mw])
 
 And of course use the same kind of mechanism for dependencies:
 
-.. code-block:: python
-
-   from typing import Any
-
-   from litestar import Request, Provide, Router
-   from litestar.datastructures import State
-
-   from my_app.db.models import User
-   from my_app.security.jwt import Token
-
-
-   async def my_dependency(request: Request[User, Token, State]) -> Any:
-       user = request.user  # correctly typed as User
-       auth = request.auth  # correctly typed as Token
-       assert isinstance(user, User)
-       assert isinstance(auth, Token)
-
-
-   my_router = Router(
-       path="sub-path/", dependencies={"some_dependency": Provide(my_dependency)}
-   )
+.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/dependency.py
+    :language: python

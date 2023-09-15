@@ -37,4 +37,4 @@ def encode_jwt_token(user_id: UUID, expiration: timedelta = DEFAULT_TIME_DELTA) 
         iat=datetime.now(),
         sub=user_id,
     )
-    return jwt.encode(token.dict(), settings.JWT_SECRET, algorithm=ALGORITHM)
+    return jwt.encode(token.model_dump(), settings.JWT_SECRET, algorithm=ALGORITHM)
