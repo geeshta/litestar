@@ -6,21 +6,8 @@ which is an Abstract Base Class (ABC) that implements the :class:`MiddlewareProt
 To add authentication to your app using this class as a basis, subclass it and implement the abstract method
 :meth:`authenticate_request <.middleware.authentication.AbstractAuthenticationMiddleware.authenticate_request>`:
 
-.. code-block:: python
-
-   from litestar.middleware import (
-       AbstractAuthenticationMiddleware,
-       AuthenticationResult,
-   )
-   from litestar.connection import ASGIConnection
-
-
-   class MyAuthenticationMiddleware(AbstractAuthenticationMiddleware):
-       async def authenticate_request(
-           self, connection: ASGIConnection
-       ) -> AuthenticationResult:
-           # do something here.
-           ...
+.. literalinclude:: /examples/security/abstract_authentication_middleware/abstract_authentication_middleware.py
+    :language: python
 
 As you can see, ``authenticate_request`` is an async function that receives a connection instance and is supposed to return
 an :class:`AuthenticationResult <.middleware.authentication.AuthenticationResult>` instance, which is a pydantic model
@@ -43,23 +30,9 @@ Since the above is quite hard to grasp in the abstract, lets see an example.
 We start off by creating a user model. It can be implemented using pydantic, and ODM, ORM, etc. For the sake of the
 example here lets say it's a pydantic model:
 
-.. code-block:: python
+.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/db/models.py
     :caption: my_app/db/models.py
-
-    import uuid
-
-    from sqlalchemy import Column
-    from sqlalchemy.dialects.postgresql import UUID
-    from sqlalchemy.orm import declarative_base
-
-    Base = declarative_base()
-
-
-    class User(Base):
-        id: uuid.UUID | None = Column(
-            UUID(as_uuid=True), default=uuid.uuid4, primary_key=True
-        )
-        # ... other fields follow, but we only require id for this example
+    :language: python
 
 
 
@@ -67,118 +40,22 @@ We will also need some utility methods to encode and decode tokens. To this end 
 the `python-jose <https://github.com/mpdavis/python-jose>`_ library. We will also create a pydantic model representing a
 JWT Token:
 
-    .. code-block:: python
+.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/security/jwt.py
         :caption: my_app/security/jwt.py
+        :language: python
 
-        from datetime import datetime, timedelta
-        from uuid import UUID
-
-        from jose import JWTError, jwt
-        from pydantic import BaseModel, UUID4
-        from litestar.exceptions import NotAuthorizedException
-
-        from app.config import settings
-
-        DEFAULT_TIME_DELTA = timedelta(days=1)
-        ALGORITHM = "HS256"
-
-
-        class Token(BaseModel):
-            exp: datetime
-            iat: datetime
-            sub: UUID4
-
-
-        def decode_jwt_token(encoded_token: str) -> Token:
-            """
-            Helper function that decodes a jwt token and returns the value stored under the ``sub`` key
-
-            If the token is invalid or expired (i.e. the value stored under the exp key is in the past) an exception is raised
-            """
-            try:
-                payload = jwt.decode(
-                    token=encoded_token, key=settings.JWT_SECRET, algorithms=[ALGORITHM]
-                )
-                return Token(**payload)
-            except JWTError as e:
-                raise NotAuthorizedException("Invalid token") from e
-
-
-        def encode_jwt_token(user_id: UUID, expiration: timedelta = DEFAULT_TIME_DELTA) -> str:
-            """Helper function that encodes a JWT token with expiration and a given user_id"""
-            token = Token(
-                exp=datetime.now() + expiration,
-                iat=datetime.now(),
-                sub=user_id,
-            )
-            return jwt.encode(token.dict(), settings.JWT_SECRET, algorithm=ALGORITHM)
 
 We can now create our authentication middleware:
 
-.. code-block:: python
+.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/security/authentication_middleware.py
     :caption: my_app/security/authentication_middleware.py
-
-    from typing import cast, TYPE_CHECKING
-
-    from sqlalchemy import select
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from litestar.middleware import (
-        AbstractAuthenticationMiddleware,
-        AuthenticationResult,
-    )
-    from litestar.exceptions import NotAuthorizedException
-    from litestar.connection import ASGIConnection
-
-    from app.db.models import User
-    from app.security.jwt import decode_jwt_token
-
-    if TYPE_CHECKING:
-        from sqlalchemy.ext.asyncio import AsyncEngine
-
-    API_KEY_HEADER = "X-API-KEY"
-
-
-    class JWTAuthenticationMiddleware(AbstractAuthenticationMiddleware):
-        async def authenticate_request(
-            self, connection: ASGIConnection
-        ) -> AuthenticationResult:
-            """
-            Given a request, parse the request api key stored in the header and retrieve the user correlating to the token from the DB
-            """
-
-            # retrieve the auth header
-
-        auth_header = connection.headers.get(API_KEY_HEADER)
-        if not auth_header:
-            raise NotAuthorizedException()
-
-        # decode the token, the result is a ``Token`` model instance
-        token = decode_jwt_token(encoded_token=auth_header)
-
-        engine = cast("AsyncEngine", connection.app.state.postgres_connection)
-        async with AsyncSession(engine) as async_session:
-            async with async_session.begin():
-                user = await async_session.execute(select(User).where(User.id == token.sub))
-        if not user:
-            raise NotAuthorizedException()
-        return AuthenticationResult(user=user, auth=token)
-
+    :language: python
 
 Finally, we need to pass our middleware to the Litestar constructor:
 
-.. code-block:: python
+.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/main.py
     :caption: my_app/main.py
-
-    from litestar import Litestar
-    from litestar.middleware.base import DefineMiddleware
-
-    from my_app.security.authentication_middleware import JWTAuthenticationMiddleware
-
-    # you can optionally exclude certain paths from authentication.
-    # the following excludes all routes mounted at or under `/schema*`
-    auth_mw = DefineMiddleware(JWTAuthenticationMiddleware, exclude="schema")
-
-    app = Litestar(route_handlers=[...], middleware=[auth_mw])
+    :language: python
 
 That's it. The ``JWTAuthenticationMiddleware`` will now run for every request, and we would be able to access these in a
 http route handler in the following way:
