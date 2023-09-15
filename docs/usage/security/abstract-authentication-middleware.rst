@@ -51,23 +51,13 @@ We can now create our authentication middleware:
     :caption: my_app/security/authentication_middleware.py
     :language: python
 
-Finally, we need to pass our middleware to the Litestar constructor:
+Finally, we need to pass our middleware to the Litestar constructor. The ``JWTAuthenticationMiddleware`` will now run
+for every request, and we would be able to access these in a http or a websocket route handler in the following way:
 
-.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/main.py
-    :caption: my_app/main.py
+.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/__init__.py
+    :caption: my_app/__init__.py
     :language: python
 
-That's it. The ``JWTAuthenticationMiddleware`` will now run for every request, and we would be able to access these in a
-http route handler in the following way:
-
-.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/routes/http_route.py
-    :language: python
-
-
-Or for a websocket route:
-
-.. literalinclude:: /examples/security/abstract_authentication_middleware/my_app/routes/websocket_route.py
-    :language: python
 
 And if you'd like to exclude individual routes outside those configured:
 
