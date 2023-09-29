@@ -102,7 +102,7 @@ class DockerServiceRegistry:
 
 @pytest.fixture(scope="session")
 def docker_services(worker_id: str) -> Generator[DockerServiceRegistry, None, None]:
-    if os.getenv("GITHUB_ACTIONS") == "true" and sys.platform == "win32":
+    if os.getenv("GITHUB_ACTIONS") == "true" and sys.platform != "linux":
         pytest.skip("Docker not available on this platform")
 
     registry = DockerServiceRegistry(worker_id)
@@ -124,7 +124,7 @@ async def redis_responsive(host: str) -> bool:
     except (ConnectionError, RedisConnectionError):
         return False
     finally:
-        await client.close()
+        await client.aclose()
 
 
 @pytest.fixture()

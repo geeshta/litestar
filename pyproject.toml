@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "litestar"
-version = "2.0.0"
+version = "2.1.1"
 description = "Litestar - A production-ready, highly performant, extensible ASGI API Framework"
 authors = [
     "Cody Fincher <cody.fincher@gmail.com>",
@@ -70,7 +70,7 @@ annotated-types = { version = "*", optional = true }
 anyio = ">=3"
 attrs = { version = "*", optional = true }
 brotli = { version = "*", optional = true }
-click = { version = "*", optional = true }
+click = "*"
 cryptography = { version = "*", optional = true }
 fast-query-parsers = ">=1.0.2"
 httpx = ">=0.22"
@@ -92,10 +92,11 @@ pydantic-extra-types = { version = "*", optional = true }
 python-jose = { version = "*", optional = true }
 pyyaml = "*"
 redis = { version = ">=4.4.4", optional = true, extras = ["hiredis"] }
-rich = { version = ">=13.0.0", optional = true }
-rich-click = { version = "*", optional = true }
+rich = ">=13.0.0"
+rich-click = "*"
 sqlalchemy = { version = ">=2.0.12", optional = true }
 structlog = { version = "*", optional = true }
+advanced-alchemy = { version = "0.2.1", optional = true }
 typing-extensions = "*"
 uvicorn = { extras = ["standard"], version = ">=0.22.0", optional = true }
 
@@ -165,9 +166,10 @@ types-redis = "*"
 annotated-types = ["annotated-types"]
 attrs = ["attrs"]
 brotli = ["brotli"]
-cli = ["click", "rich", "rich-click", "jsbeautifier", "uvicorn"]
+cli = ["jsbeautifier", "uvicorn"]
 cryptography = ["cryptography"]
 jinja = ["jinja2"]
+jsbeautifier = ["jsbeautifier"]
 jwt = ["python-jose", "cryptography"]
 mako = ["mako"]
 minijinja = ["minijinja"]
@@ -177,17 +179,14 @@ picologging = ["picologging"]
 prometheus = ["prometheus-client"]
 pydantic = ["pydantic", "pydantic-extra-types"]
 redis = ["redis"]
-sqlalchemy = ["sqlalchemy", "alembic"]
-standard = ["click", "jinja2", "jsbeautifier", "rich", "uvicorn", "rich-click"]
+sqlalchemy = ["advanced-alchemy"]
+standard = ["jinja2", "jsbeautifier", "uvicorn"]
 structlog = ["structlog"]
 
 full = [
-    "alembic",
     "annotated-types",
     "attrs",
     "brotli",
-    "click",
-    "rich-click",
     "cryptography",
     "jinja2",
     "jsbeautifier",
@@ -201,14 +200,13 @@ full = [
     "pydantic-extra-types",
     "python-jose",
     "redis",
-    "rich",
-    "sqlalchemy",
     "structlog",
     "uvicorn",
+    "advanced-alchemy"
 ]
 
 [tool.poetry.scripts]
-litestar = { callable = "litestar.__main__:run_cli", extras = ["cli"] }
+litestar = { callable = "litestar.__main__:run_cli" }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -240,8 +238,9 @@ exclude_lines = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-m='not sqlalchemy_integration' --dist=loadgroup"
+addopts = "--strict-markers --strict-config --dist=loadgroup"
 asyncio_mode = "auto"
+xfail_strict = true
 filterwarnings = [
     "ignore::trio.TrioDeprecationWarning:anyio._backends._trio*:",
     "ignore::DeprecationWarning:pkg_resources.*",
@@ -440,14 +439,8 @@ add_editors_note = true
 ruff_fix = true
 
 [tool.unasyncd.files]
-"litestar/contrib/sqlalchemy/repository/_async.py" = "litestar/contrib/sqlalchemy/repository/_sync.py"
 "litestar/repository/abc/_async.py" = "litestar/repository/abc/_sync.py"
 
 [tool.unasyncd.per_file_add_replacements."litestar/repository/abc/_async.py"]
 "AbstractAsyncRepository" = "AbstractSyncRepository"
 "AsyncRepoT" = "SyncRepoT"
-
-[tool.unasyncd.per_file_add_replacements."litestar/contrib/sqlalchemy/repository/_async.py"]
-SQLAlchemyAsyncRepository = "SQLAlchemySyncRepository"
-"sqlalchemy.ext.asyncio.AsyncSession" = "sqlalchemy.orm.Session"
-"litestar.repository.AbstractAsyncRepository" = "litestar.repository.AbstractSyncRepository"
